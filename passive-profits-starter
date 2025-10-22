@@ -1,0 +1,104 @@
+const express = require('express');
+const router = express.Router();
+const OpenAI = require('openai');
+
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+/**
+ * POST /api/ai/query
+ * Body: { userId, lessonId, question, assignmentText }
+ * This proxies to OpenAI with a controlled prompt.
+ */
+router.post('/query', async (req,res) => {
+  const { userId, lessonId, question, assignmentText } = req.body;
+  if (!question) return res.status(400).json({ error: 'question required' });
+  try {
+    const system = "You are an educational assistant for 'Passive Profits Academy'. Provide concise actionable feedback (max 200 words). Do NOT promise income or give legal/tax advice.";
+    const userPrompt = `Lesson:${lessonId} User:${userId} Question:${question} Assignment:${assignmentText || ''}`;
+    const response = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userPrompt }
+      ],
+      max_tokens: 400
+    });
+    const text = response.choices && response.choices[0].message.content;
+    res.json({ answer: text });
+  } catch (err) {
+    console.error('AI error', err);
+    res.status(500).json({ error: 'ai_error', details: err.message });
+  }
+});
+
+module.exports = router;
+
+
+const express = require('express');
+const router = express.Router();
+const Stripe = require('stripe');
+const stripe = new Stripe(process.env.STRIPE_SECRET || 'sk_test_placeholder', { apiVersion: '2024-11-01' });
+
+/**
+ * Creates a Stripe Checkout session for a given course_id.
+ * Frontend should POST: { courseId, successUrl, cancelUrl, email, metadata }
+ *
+ * NOTE: This is a minimal example. Validate requests, handle prices via your DB.
+ */
+router.post('/create-session', async (req,res) => {
+  try {
+    const { courseId, successUrl, cancelUrl, email } = req.body;
+    // TODO: get real course and price from DB
+    const price = 3900; // cents
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: [
+        { price_data: { currency: 'usd', product_data: { name: 'Course #' + courseId }, unit_amount: price }, quantity: 1 }
+      ],
+      customer_email: email,
+      success_url: successUrl || (process.env.FRONTEND_URL + '/success?session_id={CHECKOUT_SESSION_ID}'),
+      cancel_url: cancelUrl || (process.env.FRONTEND_URL + '/cancel'),
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'create-session-failed', details: err.message });
+  }
+});
+
+module.exports = router;
+
+
+const express = require('express');
+const router = express.Router();
+
+// sample in-memory courses — replace with DB queries
+const courses = [
+  {
+    id: 1,
+    title: "Passive Profits Blueprint",
+    slug: "passive-profits-blueprint",
+    price_cents: 3900,
+    description: "A practical course to start earning passive incomes."
+  },
+  {
+    id: 2,
+    title: "Affiliate Funnels That Earn",
+    slug: "affiliate-funnels",
+    price_cents: 7900,
+    description: "Build high-converting affiliate funnels."
+  }
+];
+
+router.get('/', (req,res) => {
+  res.json(courses);
+});
+
+router.get('/:slug', (req,res) => {
+  const c = courses.find(x => x.slug === req.params.slug);
+  if (!c) return res.status(404).json({error:'not found'});
+  res.json(c);
+});
+
+module.exports = router;
