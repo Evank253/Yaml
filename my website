@@ -1,0 +1,32 @@
+# Passive Profits Academy — Starter Repo
+
+This starter repository contains a minimal **React (Vite)** frontend and a **Node + Express** backend with example endpoints for courses, Stripe checkout stub, and an OpenAI proxy endpoint.
+
+**What’s included**
+- `frontend/` — Vite + React app (src, package.json)
+- `backend/` — Express server (routes for courses, checkout, AI proxy, and webhooks)
+- `infra/` — `docker-compose.yml` for local Postgres + backend (optional)
+- `db/schema.sql` — minimal SQL schema for Postgres
+- `.env.example` — env variables example
+
+**How to run (locally)**
+
+1. Backend
+```bash
+cd backend
+cp .env.example .env
+# fill in .env (STRIPE_SECRET, STRIPE_WEBHOOK_SECRET, OPENAI_API_KEY, DATABASE_URL)
+npm install
+npm run dev
+```
+
+2. Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+# open http://localhost:5173
+```
+
+This is a starter scaffold — customize authentication, production deployment, CI, and secrets before going live.
+
